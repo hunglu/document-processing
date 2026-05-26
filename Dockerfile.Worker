@@ -1,0 +1,38 @@
+# ── Build stage ──────────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+WORKDIR /src
+
+COPY ["src/DocumentProcessing.Contracts/DocumentProcessing.Contracts.csproj",   "src/DocumentProcessing.Contracts/"]
+COPY ["src/DocumentProcessing.Core/DocumentProcessing.Core.csproj",             "src/DocumentProcessing.Core/"]
+COPY ["src/DocumentProcessing.Infrastructure/DocumentProcessing.Infrastructure.csproj", "src/DocumentProcessing.Infrastructure/"]
+COPY ["src/DocumentProcessing.Worker/DocumentProcessing.Worker.csproj",         "src/DocumentProcessing.Worker/"]
+RUN dotnet restore "src/DocumentProcessing.Worker/DocumentProcessing.Worker.csproj" --runtime linux-musl-x64
+
+COPY . .
+RUN dotnet build "src/DocumentProcessing.Worker/DocumentProcessing.Worker.csproj" \
+    -c Release \
+    --runtime linux-musl-x64 \
+    --self-contained false \
+    --no-restore \
+    -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "src/DocumentProcessing.Worker/DocumentProcessing.Worker.csproj" \
+    -c Release \
+    --runtime linux-musl-x64 \
+    --self-contained false \
+    --no-build \
+    -o /app/publish
+
+# ── Runtime stage ─────────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
+WORKDIR /app
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+ENV DOTNET_RUNNING_IN_CONTAINER=true
+
+COPY --from=publish /app/publish .
+
+ENTRYPOINT ["dotnet", "DocumentProcessing.Worker.dll"]
