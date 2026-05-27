@@ -94,7 +94,7 @@ try
 
     await app.RunAsync();
 }
-catch (Exception ex) when (ex is not OperationCanceledException)
+catch (Exception ex) when (ex is not OperationCanceledException and not HostAbortedException)
 {
     Log.Fatal(ex, "DocumentProcessing.Api terminated unexpectedly");
     throw;

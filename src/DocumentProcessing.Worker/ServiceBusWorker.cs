@@ -124,19 +124,35 @@ public sealed class ServiceBusWorker : BackgroundService
                     await ProcessDocumentAsync(uploadedEvent, correlationId, ct),
                     args.CancellationToken);
 
-                await args.CompleteMessageAsync(args.Message, args.CancellationToken);
+                // Use CancellationToken.None so settle always completes even if the host
+                // cancellation token has been signalled during a graceful shutdown.
+                await args.CompleteMessageAsync(args.Message, CancellationToken.None);
 
                 _logger.LogInformation("Message completed for document {DocumentId}", uploadedEvent.DocumentId);
+            }
+            catch (OperationCanceledException) when (args.CancellationToken.IsCancellationRequested)
+            {
+                // Host is shutting down — the processor will abandon the message automatically.
+                _logger.LogWarning("Processing of message {MessageId} cancelled due to host shutdown; message will be abandoned",
+                    args.Message.MessageId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unrecoverable error processing message {MessageId}; dead-lettering", args.Message.MessageId);
 
-                await args.DeadLetterMessageAsync(
-                    args.Message,
-                    deadLetterReason: ex.GetType().Name,
-                    deadLetterErrorDescription: ex.Message,
-                    cancellationToken: args.CancellationToken);
+                try
+                {
+                    await args.DeadLetterMessageAsync(
+                        args.Message,
+                        deadLetterReason: ex.GetType().Name,
+                        deadLetterErrorDescription: ex.Message,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception dlEx)
+                {
+                    _logger.LogError(dlEx, "Failed to dead-letter message {MessageId}; message will be abandoned by the broker",
+                        args.Message.MessageId);
+                }
             }
         }
     }

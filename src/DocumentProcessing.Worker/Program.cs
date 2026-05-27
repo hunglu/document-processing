@@ -36,7 +36,7 @@ try
 
     await host.RunAsync();
 }
-catch (Exception ex) when (ex is not OperationCanceledException)
+catch (Exception ex) when (ex is not OperationCanceledException and not HostAbortedException)
 {
     Log.Fatal(ex, "DocumentProcessing.Worker terminated unexpectedly");
     throw;

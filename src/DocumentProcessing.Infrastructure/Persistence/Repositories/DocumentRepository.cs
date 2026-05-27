@@ -46,6 +46,11 @@ internal sealed class DocumentRepository : IDocumentRepository
     {
         try
         {
+            // DbContext uses NoTrackingWithIdentityResolution so entities from queries are
+            // untracked. Explicitly attach and mark modified so EF Core generates an UPDATE.
+            if (_db.Entry(document).State == EntityState.Detached)
+                _db.Documents.Update(document);
+
             await _db.SaveChangesAsync(cancellationToken);
             _logger.LogInformation("Document {DocumentId} updated to status {Status}", document.Id, document.Status);
         }

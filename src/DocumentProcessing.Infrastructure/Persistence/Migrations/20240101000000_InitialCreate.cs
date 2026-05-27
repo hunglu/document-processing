@@ -1,4 +1,5 @@
-using System;
+using DocumentProcessing.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DocumentProcessing.Infrastructure.Persistence.Migrations;
 
 /// <inheritdoc />
+[DbContext(typeof(ApplicationDbContext))]
+[Migration("20240101000000_InitialCreate")]
 public partial class InitialCreate : Migration
 {
     /// <inheritdoc />

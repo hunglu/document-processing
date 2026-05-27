@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "DocumentProcessing.Worker": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
