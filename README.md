@@ -16,18 +16,13 @@ Client Browser / Mobile App
          ▼                   ▼                         ▼
 ┌────────────────┐  ┌────────────────┐  ┌──────────────────────┐
 │  Azure SQL DB  │  │  Azure Cache   │  │  Azure Blob Storage  │
-│ (GP_S_Gen5_2)  │  │  for Redis C1  │  │  (docs + pages)      │
-└────────────────┘  └────────────────┘  └───────────┬──────────┘
-                                                    │
-                                          ┌─────────▼──────────┐
-                                          │   Azure CDN Edge   │
-                                          │ (cached WebP pages)│
-                                          └────────────────────┘
+│ (GP_S_Gen5_2)  │  │  for Redis C1  │  │  (original PDFs)     │
+└────────────────┘  └────────────────┘  └────────────────────┘
          │ Service Bus Queue (document-processing-queue)
          ▼
 ┌────────────────────┐
 │  DocumentProcessing│
-│      .Worker       │  ← PdfPig, ImageSharp/WebP, Parallel.ForEachAsync
+│      .Worker       │  ← PdfPig text extraction, parallel per-page
 │   (App Service)    │
 └────────────────────┘
          │ Service Bus Topic (document-events)
@@ -53,58 +48,209 @@ On a cache miss the response time is still within 2 s because EF queries are asy
 
 ## Local Development Setup
 
+No Azure subscription required. Every Azure service is replaced by a local emulator.
+
+| Azure service | Local replacement |
+|---|---|
+| Azure SQL | SQL Server 2022 (Docker) |
+| Azure Blob Storage | Azurite (Docker) |
+| Azure Service Bus | Service Bus Emulator (Docker) |
+| Azure Cache for Redis | Redis 7 (Docker) |
+| Application Insights | Dummy key — logs go to console only |
+| DataDog | Skipped — OTLP errors are non-fatal, app still runs |
+
 ### Prerequisites
 
-- Docker Desktop
-- .NET 8 SDK
-- Azure Service Bus namespace (or the Service Bus emulator from Microsoft)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) running
+- .NET 8 SDK (`dotnet --version` → `8.x`)
 
-### 1. Clone and configure
+---
 
-```bash
-git clone <repo>
-cd DocumentProcessing
-cp .env.example .env
-# Edit .env with your values (SQL_SA_PASSWORD is required)
+### Step 1 — Create your `.env` file
+
+```powershell
+Copy-Item .env.example .env
 ```
 
-### 2. Start all services
+The defaults in `.env.example` work as-is for local development.
 
-```bash
-docker-compose up -d
+---
+
+### Step 2 — Start infrastructure
+
+```powershell
+docker-compose up sqlserver redis azurite servicebus-emulator -d
 ```
 
-Services started:
-- `docproc-sqlserver` on `localhost:1433`
-- `docproc-redis` on `localhost:6379`
-- `docproc-azurite` on `localhost:10000` (blob)
-- `docproc-datadog-agent` on `localhost:4317` (OTLP gRPC)
-- `docproc-api` on `http://localhost:8080`
-- `docproc-worker` (background service)
+Wait ~30 seconds for SQL Server to finish initialising, then verify all containers are up:
 
-### 3. Apply EF Core migrations (first run only)
+```powershell
+docker-compose ps
+```
 
-The API and Worker auto-migrate on startup in Development. To run manually:
+The Service Bus Emulator reads [`infra/local/servicebus-config.json`](infra/local/servicebus-config.json) on startup and automatically creates:
 
-```bash
-dotnet ef database update \
-  --project src/DocumentProcessing.Infrastructure \
+- Queue: `document-processing-queue`
+- Topic: `document-events` (subscription: `all`)
+
+---
+
+### Step 3 — Run the API (Terminal 1)
+
+```powershell
+cd src/DocumentProcessing.Api
+dotnet run
+```
+
+On first run the API auto-migrates the database (`ASPNETCORE_ENVIRONMENT=Development`). Look for:
+
+```
+[HH:mm:ss INF] Now listening on: http://localhost:5000
+```
+
+Swagger UI is available at `http://localhost:5000/swagger`.
+
+---
+
+### Step 4 — Run the Worker (Terminal 2)
+
+```powershell
+cd src/DocumentProcessing.Worker
+dotnet run
+```
+
+Look for:
+
+```
+[HH:mm:ss INF] ServiceBusWorker listening on queue document-processing-queue
+```
+
+---
+
+### Step 5 — Test the full processing flow
+
+Have a small **text-based PDF** (any PDF with selectable text) saved as `sample.pdf` in your working directory.
+
+#### 5a. Create an upload intent
+
+```powershell
+$response = Invoke-RestMethod -Method POST `
+  -Uri "http://localhost:5000/api/v1/documents/upload-intent" `
+  -ContentType "application/json" `
+  -Headers @{ "X-Tenant-ID" = "tenant-1" } `
+  -Body '{"fileName":"sample.pdf","fileSizeBytes":100000,"checksum":"abc123","tenantId":"tenant-1"}'
+
+$uploadId = $response.uploadId
+$sasUrl   = $response.sasUrl
+
+Write-Host "Upload ID : $uploadId"
+Write-Host "SAS URL   : $sasUrl"
+```
+
+#### 5b. Upload the PDF to Azurite via the SAS URL
+
+```powershell
+Invoke-RestMethod -Method PUT `
+  -Uri $sasUrl `
+  -Headers @{ "x-ms-blob-type" = "BlockBlob"; "Content-Type" = "application/pdf" } `
+  -InFile ".\sample.pdf"
+```
+
+#### 5c. Signal upload complete (triggers the worker)
+
+```powershell
+Invoke-RestMethod -Method POST `
+  -Uri "http://localhost:5000/api/v1/documents/$uploadId/complete" `
+  -ContentType "application/json" `
+  -Headers @{ "X-Tenant-ID" = "tenant-1" } `
+  -Body '{"checksum":"abc123"}'
+```
+
+Worker terminal should immediately log:
+
+```
+[INF] Processing document <id> from tenant tenant-1
+[INF] PDF has N pages for document <id>
+[INF] Text extracted from all N pages for document <id>
+[INF] Document <id> processed successfully: N pages in Xms
+```
+
+#### 5d. Poll processing status
+
+```powershell
+Invoke-RestMethod `
+  -Uri "http://localhost:5000/api/v1/documents/$uploadId/status" `
+  -Headers @{ "X-Tenant-ID" = "tenant-1" }
+```
+
+Expected response:
+
+```json
+{
+  "documentId": "...",
+  "status": "Ready",
+  "pageCount": 3
+}
+```
+
+#### 5e. Retrieve the manifest with extracted text
+
+```powershell
+Invoke-RestMethod `
+  -Uri "http://localhost:5000/api/v1/documents/$uploadId/manifest" `
+  -Headers @{ "X-Tenant-ID" = "tenant-1" } | ConvertTo-Json -Depth 5
+```
+
+Expected response:
+
+```json
+{
+  "documentId": "...",
+  "fileName": "sample.pdf",
+  "pageCount": 3,
+  "status": "Ready",
+  "pages": [
+    { "pageNumber": 1, "extractedText": "Introduction ..." },
+    { "pageNumber": 2, "extractedText": "Section 2 ..." },
+    { "pageNumber": 3, "extractedText": "Conclusion ..." }
+  ]
+}
+```
+
+#### 5f. Retrieve a single page
+
+```powershell
+Invoke-RestMethod `
+  -Uri "http://localhost:5000/api/v1/documents/$uploadId/pages/1" `
+  -Headers @{ "X-Tenant-ID" = "tenant-1" }
+```
+
+Second call to the same endpoint returns the same result from Redis cache (check the Worker logs for `Cache hit`).
+
+---
+
+### Manual migration (optional)
+
+Migrations run automatically on startup. To run manually:
+
+```powershell
+dotnet ef database update `
+  --project src/DocumentProcessing.Infrastructure `
   --startup-project src/DocumentProcessing.Api
 ```
 
-### 4. Seed test data (optional)
+---
 
-```bash
-# Upload a test PDF through the API
-curl -X POST http://localhost:8080/api/v1/documents/upload-intent \
-  -H "Content-Type: application/json" \
-  -H "X-Tenant-ID: dev-tenant" \
-  -d '{"fileName":"sample.pdf","fileSizeBytes":102400,"checksum":"'$(printf 'a%.0s' {1..64})'","tenantId":"dev-tenant"}'
-```
+### Troubleshooting
 
-### 5. Swagger UI
-
-Open `http://localhost:8080/swagger` to explore the API.
+| Symptom | Fix |
+|---|---|
+| SQL Server container not healthy | Wait longer; check `docker logs docproc-sqlserver` |
+| Service Bus Emulator exits immediately | SQL Server wasn't ready. Run `docker-compose restart servicebus-emulator` |
+| `Redis:ConnectionString is required` at startup | `ASPNETCORE_ENVIRONMENT=Development` must be set — it is by default with `dotnet run` |
+| OTLP exporter warnings in logs | Expected — DataDog is not running locally. Traces are dropped silently, the app is unaffected |
+| SAS URL upload returns 400 | Use the SAS URL exactly as returned. Any modification (encoding, truncation) invalidates the signature |
+| Worker status stays `Processing` | Check worker terminal for errors; re-run `docker-compose ps` to confirm the Service Bus Emulator is still up |
 
 ## Environment Variables Reference
 

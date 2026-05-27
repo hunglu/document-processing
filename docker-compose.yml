@@ -35,7 +35,7 @@ services:
       timeout: 3s
       retries: 5
 
-  # ──── Azurite (Azure Storage emulator) ────────────────────────────────────
+  # ──── Azurite (Azure Blob Storage emulator) ─────────────────────────────────
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite
     container_name: docproc-azurite
@@ -47,8 +47,25 @@ services:
       - azurite_data:/data
     command: azurite --loose --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data
 
-  # ──── DataDog Agent (OTLP receiver) ─────────────────────────────────────
+  # ──── Azure Service Bus Emulator ─────────────────────────────────────────
+  servicebus-emulator:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    container_name: docproc-servicebus-emulator
+    ports:
+      - "5672:5672"
+    environment:
+      SQL_SERVER: sqlserver
+      MSSQL_SA_PASSWORD: "${SQL_SA_PASSWORD}"
+      ACCEPT_EULA: "Y"
+    volumes:
+      - ./infra/local/servicebus-config.json:/ServiceBus_Emulator/ConfigFiles/Config.json
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  # ──── DataDog Agent — optional, only starts with --profile monitoring ──────
   datadog-agent:
+    profiles: ["monitoring"]
     image: datadog/agent:latest
     container_name: docproc-datadog-agent
     environment:
@@ -60,9 +77,9 @@ services:
       DD_OTLP_CONFIG_RECEIVER_GRPC_ENDPOINT: "0.0.0.0:4317"
       DD_LOG_LEVEL: WARN
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "8125:8125/udp" # StatsD
+      - "4317:4317"
+      - "4318:4318"
+      - "8125:8125/udp"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /proc/:/host/proc/:ro
@@ -82,7 +99,7 @@ services:
       Redis__ConnectionString: "redis:6379"
       Azure__BlobStorage__ConnectionString: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1"
       Azure__BlobStorage__CdnEndpointBaseUrl: "http://azurite:10000/devstoreaccount1"
-      Azure__ServiceBus__ConnectionString: "${SERVICEBUS_CONNECTION_STRING}"
+      Azure__ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ApplicationInsights__ConnectionString: "${APPINSIGHTS_CONNECTION_STRING:-InstrumentationKey=00000000-0000-0000-0000-000000000000}"
       DataDog__OtlpEndpoint: "http://datadog-agent:4317"
       DataDog__ServiceName: "document-processing-api"
@@ -92,6 +109,8 @@ services:
       redis:
         condition: service_healthy
       azurite:
+        condition: service_started
+      servicebus-emulator:
         condition: service_started
 
   # ──── Worker ─────────────────────────────────────────────────────────────
@@ -106,7 +125,7 @@ services:
       Redis__ConnectionString: "redis:6379"
       Azure__BlobStorage__ConnectionString: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1"
       Azure__BlobStorage__CdnEndpointBaseUrl: "http://azurite:10000/devstoreaccount1"
-      Azure__ServiceBus__ConnectionString: "${SERVICEBUS_CONNECTION_STRING}"
+      Azure__ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ApplicationInsights__ConnectionString: "${APPINSIGHTS_CONNECTION_STRING:-InstrumentationKey=00000000-0000-0000-0000-000000000000}"
       DataDog__OtlpEndpoint: "http://datadog-agent:4317"
       DataDog__ServiceName: "document-processing-worker"
@@ -116,6 +135,8 @@ services:
       redis:
         condition: service_healthy
       azurite:
+        condition: service_started
+      servicebus-emulator:
         condition: service_started
 
 volumes:

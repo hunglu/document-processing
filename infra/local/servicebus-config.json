@@ -1,0 +1,53 @@
+{
+  "UserConfig": {
+    "Namespaces": [
+      {
+        "Name": "emulatorns",
+        "Queues": [
+          {
+            "Name": "document-processing-queue",
+            "Properties": {
+              "DeadLetteringOnMessageExpiration": false,
+              "DefaultMessageTimeToLive": "PT1H",
+              "DuplicateDetectionHistoryTimeWindow": "PT10M",
+              "ForwardDeadLetteredMessagesTo": "",
+              "ForwardTo": "",
+              "LockDuration": "PT1M",
+              "MaxDeliveryCount": 10,
+              "RequiresDuplicateDetection": false,
+              "RequiresSession": false
+            }
+          }
+        ],
+        "Topics": [
+          {
+            "Name": "document-events",
+            "Properties": {
+              "DefaultMessageTimeToLive": "PT1H",
+              "DuplicateDetectionHistoryTimeWindow": "PT10M",
+              "RequiresDuplicateDetection": false,
+              "SupportOrdering": false
+            },
+            "Subscriptions": [
+              {
+                "Name": "all",
+                "Properties": {
+                  "DeadLetteringOnFilterEvaluationExceptions": false,
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "ForwardDeadLetteredMessagesTo": "",
+                  "ForwardTo": "",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 10,
+                  "RequiresSession": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "Logging": {
+      "Type": "File"
+    }
+  }
+}
