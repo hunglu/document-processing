@@ -66,7 +66,7 @@ partial class ApplicationDbContextModelSnapshot : ModelSnapshot
             b.Property<Guid>("DocumentId").HasColumnType("uniqueidentifier");
             b.Property<string>("FromStatus").IsRequired().HasMaxLength(32).HasColumnType("nvarchar(32)");
             b.Property<string>("ToStatus").IsRequired().HasMaxLength(32).HasColumnType("nvarchar(32)");
-            b.Property<string?>("Message").HasMaxLength(2048).HasColumnType("nvarchar(2048)");
+            b.Property<string>("Message").HasMaxLength(2048).HasColumnType("nvarchar(2048)");
             b.Property<string>("Actor").IsRequired().HasMaxLength(128).HasColumnType("nvarchar(128)");
             b.Property<string>("CorrelationId").IsRequired().HasMaxLength(128).HasColumnType("nvarchar(128)");
             b.Property<DateTimeOffset>("OccurredAt").HasColumnType("datetimeoffset");

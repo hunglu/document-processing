@@ -3,6 +3,7 @@ using DocumentProcessing.Infrastructure.CQRS;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using Xunit;
 
 namespace DocumentProcessing.UnitTests.CQRS;
 

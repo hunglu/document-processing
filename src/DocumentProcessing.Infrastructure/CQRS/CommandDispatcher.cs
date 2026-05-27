@@ -8,7 +8,7 @@ namespace DocumentProcessing.Infrastructure.CQRS;
 /// Resolves command handlers from the DI container at dispatch time.
 /// Uses open-generic registration — no reflection scanning at startup.
 /// </summary>
-internal sealed class CommandDispatcher : ICommandDispatcher
+public class CommandDispatcher : ICommandDispatcher
 {
     private readonly IServiceProvider _services;
     private static readonly ILogger Logger = Log.ForContext<CommandDispatcher>();

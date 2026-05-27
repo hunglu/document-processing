@@ -34,7 +34,7 @@ public abstract class ApiControllerBase : ControllerBase
     }
 
     /// <summary>Returns <c>200 OK</c> with <paramref name="value"/>.</summary>
-    protected new ActionResult<T> Ok<T>(T value) => base.Ok(value);
+    protected ActionResult<T> Ok<T>(T value) => base.Ok(value);
 
     /// <summary>Returns <c>201 Created</c> at <paramref name="uri"/> with <paramref name="value"/>.</summary>
     protected ActionResult<T> Created<T>(string uri, T value) => base.Created(uri, value);

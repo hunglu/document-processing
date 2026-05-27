@@ -14,7 +14,7 @@ namespace DocumentProcessing.Infrastructure.CQRS.Handlers;
 /// <summary>
 /// Handles <see cref="GetPageUrlQuery"/>: checks Redis first; on miss, generates CDN URLs and caches them.
 /// </summary>
-internal sealed class GetPageUrlQueryHandler : IQueryHandler<GetPageUrlQuery, PageUrlDto>
+public class GetPageUrlQueryHandler : IQueryHandler<GetPageUrlQuery, PageUrlDto>
 {
     private readonly IDocumentRepository _repository;
     private readonly IStorageService _storage;

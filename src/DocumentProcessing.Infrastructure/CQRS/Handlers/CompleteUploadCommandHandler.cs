@@ -15,7 +15,7 @@ namespace DocumentProcessing.Infrastructure.CQRS.Handlers;
 /// Handles <see cref="CompleteUploadCommand"/>: validates the checksum, transitions the document to
 /// Uploaded, and emits <see cref="DocumentUploadedEvent"/> on the processing queue.
 /// </summary>
-internal sealed class CompleteUploadCommandHandler : ICommandHandler<CompleteUploadCommand, DocumentId>
+public class CompleteUploadCommandHandler : ICommandHandler<CompleteUploadCommand, DocumentId>
 {
     private readonly IDocumentRepository _repository;
     private readonly IMessagePublisher _publisher;

@@ -4,7 +4,7 @@ using DocumentProcessing.Core.CQRS;
 namespace DocumentProcessing.Core.Commands;
 
 /// <summary>Creates a new document record and generates a SAS URL for direct blob upload.</summary>
-public sealed class CreateUploadIntentCommand : ICommand<UploadIntentResponse>
+public class CreateUploadIntentCommand : ICommand<UploadIntentResponse>
 {
     /// <summary>Display file name (e.g. "report.pdf").</summary>
     public string FileName { get; init; } = string.Empty;

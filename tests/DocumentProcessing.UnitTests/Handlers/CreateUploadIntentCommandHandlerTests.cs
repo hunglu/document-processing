@@ -3,6 +3,7 @@ using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Infrastructure.CQRS.Handlers;
 using FluentAssertions;
 using Moq;
+using Xunit;
 
 namespace DocumentProcessing.UnitTests.Handlers;
 

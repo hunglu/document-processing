@@ -9,7 +9,7 @@ using StackExchange.Redis;
 namespace DocumentProcessing.Infrastructure.Caching;
 
 /// <summary>StackExchange.Redis implementation of <see cref="ICacheService"/>.</summary>
-internal sealed class RedisCacheService : ICacheService
+public class RedisCacheService : ICacheService
 {
     private readonly IDatabase _db;
     private readonly RedisOptions _options;

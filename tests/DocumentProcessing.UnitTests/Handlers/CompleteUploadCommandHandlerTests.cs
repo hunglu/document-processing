@@ -9,6 +9,7 @@ using DocumentProcessing.Infrastructure.Configuration;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Moq;
+using Xunit;
 
 namespace DocumentProcessing.UnitTests.Handlers;
 

@@ -3,6 +3,7 @@ using DocumentProcessing.Core.Domain;
 using DocumentProcessing.Core.Exceptions;
 using DocumentProcessing.Core.ValueObjects;
 using FluentAssertions;
+using Xunit;
 
 namespace DocumentProcessing.UnitTests.Domain;
 

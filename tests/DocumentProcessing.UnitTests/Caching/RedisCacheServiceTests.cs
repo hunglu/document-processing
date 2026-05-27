@@ -6,6 +6,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Moq;
 using StackExchange.Redis;
+using Xunit;
 
 namespace DocumentProcessing.UnitTests.Caching;
 

@@ -10,7 +10,7 @@ using Serilog;
 namespace DocumentProcessing.Infrastructure.CQRS.Handlers;
 
 /// <summary>Handles <see cref="CreateUploadIntentCommand"/>: creates a document record and issues a SAS URL.</summary>
-internal sealed class CreateUploadIntentCommandHandler : ICommandHandler<CreateUploadIntentCommand, UploadIntentResponse>
+public class CreateUploadIntentCommandHandler : ICommandHandler<CreateUploadIntentCommand, UploadIntentResponse>
 {
     private readonly IDocumentRepository _repository;
     private readonly IStorageService _storage;

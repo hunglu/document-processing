@@ -21,8 +21,8 @@ internal static class CompiledQueries
                .FirstOrDefault(d => d.Id == id && d.TenantId == tenantId));
 
     /// <summary>Compiled query: fetch pages for a document ordered by page number.</summary>
-    public static readonly Func<ApplicationDbContext, Guid, IAsyncEnumerable<DocumentPage>> GetPagesByDocumentId =
-        EF.CompileAsyncQuery((ApplicationDbContext ctx, Guid documentId) =>
+    public static readonly Func<ApplicationDbContext, Guid, Task<IOrderedQueryable<DocumentPage>>> GetPagesByDocumentId =
+        EF.CompileAsyncQuery((ApplicationDbContext ctx, Guid documentId) => 
             ctx.DocumentPages
                .Where(p => p.DocumentId == documentId)
                .OrderBy(p => p.PageNumber));

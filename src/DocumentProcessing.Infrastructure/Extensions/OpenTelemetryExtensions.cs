@@ -40,7 +40,6 @@ public static class OpenTelemetryExtensions
                     options.SetDbStatementForStoredProcedure = true;
                 })
                 .AddRedisInstrumentation(
-                    sp => (ConnectionMultiplexer)sp.GetRequiredService<IConnectionMultiplexer>(),
                     options => options.SetVerboseDatabaseStatements = false)
                 .AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint)));
 
