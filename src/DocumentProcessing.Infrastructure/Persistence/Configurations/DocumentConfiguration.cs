@@ -55,13 +55,13 @@ internal sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .IsRequired();
 
         builder.Property(d => d.UpdatedAt)
-            .IsRequired()
-            .IsConcurrencyToken();
+            .IsRequired();
 
-        // Optimistic concurrency via row version
+        // Optimistic concurrency via SQL Server rowversion — sole concurrency token.
+        // UpdatedAt is mutated before SaveChanges, so using it as a token would make
+        // the WHERE clause mismatch on every update with a detached entity.
         builder.Property(d => d.RowVersion)
-            .IsRowVersion()
-            .IsConcurrencyToken();
+            .IsRowVersion();
 
         builder.HasIndex(d => d.TenantId);
         builder.HasIndex(d => new { d.TenantId, d.Status });

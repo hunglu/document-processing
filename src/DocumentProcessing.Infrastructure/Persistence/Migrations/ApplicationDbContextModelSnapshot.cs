@@ -34,7 +34,7 @@ partial class ApplicationDbContextModelSnapshot : ModelSnapshot
             b.Property<string>("FailureReason").HasMaxLength(64).HasColumnType("nvarchar(64)");
             b.Property<string>("FailureMessage").HasMaxLength(2048).HasColumnType("nvarchar(2048)");
             b.Property<DateTimeOffset>("CreatedAt").HasColumnType("datetimeoffset");
-            b.Property<DateTimeOffset>("UpdatedAt").IsConcurrencyToken().HasColumnType("datetimeoffset");
+            b.Property<DateTimeOffset>("UpdatedAt").HasColumnType("datetimeoffset");
             b.Property<byte[]>("RowVersion").IsConcurrencyToken().IsRowVersion().ValueGeneratedOnAddOrUpdate().HasColumnType("rowversion");
             b.HasKey("Id");
             b.HasIndex("TenantId");
