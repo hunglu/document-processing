@@ -49,10 +49,7 @@ partial class ApplicationDbContextModelSnapshot : ModelSnapshot
             SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
             b.Property<Guid>("DocumentId").HasColumnType("uniqueidentifier");
             b.Property<int>("PageNumber").HasColumnType("int");
-            b.Property<string>("FullBlobPath").IsRequired().HasMaxLength(1024).HasColumnType("nvarchar(1024)");
-            b.Property<string>("ThumbnailBlobPath").IsRequired().HasMaxLength(1024).HasColumnType("nvarchar(1024)");
-            b.Property<int>("WidthPx").HasColumnType("int");
-            b.Property<int>("HeightPx").HasColumnType("int");
+            b.Property<string>("ExtractedText").IsRequired().HasColumnType("nvarchar(max)");
             b.Property<DateTimeOffset>("CreatedAt").HasColumnType("datetimeoffset");
             b.HasKey("Id");
             b.HasIndex("DocumentId", "PageNumber").IsUnique();
