@@ -2,6 +2,7 @@ using DocumentProcessing.Core.Commands;
 using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Infrastructure.CQRS.Handlers;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -11,9 +12,10 @@ public sealed class CreateUploadIntentCommandHandlerTests
 {
     private readonly Mock<IDocumentRepository> _repositoryMock = new();
     private readonly Mock<IStorageService> _storageMock = new();
+    private readonly Mock<ILogger<CreateUploadIntentCommandHandler>> _loggerMock = new();
 
     private CreateUploadIntentCommandHandler CreateHandler() =>
-        new(_repositoryMock.Object, _storageMock.Object);
+        new(_repositoryMock.Object, _storageMock.Object, _loggerMock.Object);
 
     [Fact]
     public async Task HandleAsync_GeneratesSasUrl_AndPersistsDocument()

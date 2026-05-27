@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using OpenTelemetry;
 using Serilog.Context;
 
 namespace DocumentProcessing.Api.Middleware;

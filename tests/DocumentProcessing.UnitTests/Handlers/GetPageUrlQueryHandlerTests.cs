@@ -6,6 +6,7 @@ using DocumentProcessing.Core.ValueObjects;
 using DocumentProcessing.Infrastructure.CQRS.Handlers;
 using DocumentProcessing.Infrastructure.Configuration;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -17,12 +18,13 @@ public sealed class GetPageUrlQueryHandlerTests
     private readonly Mock<IDocumentRepository> _repositoryMock = new();
     private readonly Mock<IStorageService> _storageMock = new();
     private readonly Mock<ICacheService> _cacheMock = new();
+    private readonly Mock<ILogger<GetPageUrlQueryHandler>> _loggerMock = new();
 
     private readonly IOptions<RedisOptions> _redisOptions =
         Options.Create(new RedisOptions { PageUrlTtlMinutes = 55 });
 
     private GetPageUrlQueryHandler CreateHandler() =>
-        new(_repositoryMock.Object, _storageMock.Object, _cacheMock.Object, _redisOptions);
+        new(_repositoryMock.Object, _cacheMock.Object, _redisOptions, _loggerMock.Object);
 
     private static Document BuildReadyDocument(Guid docId, Guid tenantDoc)
     {
@@ -37,8 +39,7 @@ public sealed class GetPageUrlQueryHandlerTests
         doc.MarkUploaded("c");
         doc.MarkProcessing("c");
 
-        var page = DocumentPage.Create(docId, PageNumber.From(1),
-            "pages/doc/page-0001-full.webp", "pages/doc/page-0001-thumb.webp", 800, 1200);
+        var page = DocumentPage.Create(docId, PageNumber.From(1), "Sample extracted text");
         doc.AddPages([page]);
         doc.MarkReady(1, "c");
         return doc;
@@ -50,7 +51,7 @@ public sealed class GetPageUrlQueryHandlerTests
         var docId = Guid.NewGuid();
         var query = new GetPageUrlQuery { DocumentId = docId, PageNumber = 1, TenantId = "t1" };
 
-        var cached = new PageUrlDto { PageNumber = 1, FullUrl = "https://cdn/full", ThumbnailUrl = "https://cdn/thumb" };
+        var cached = new PageUrlDto { PageNumber = 1, ExtractedText = "Sample extracted text" };
 
         _cacheMock.Setup(c => c.GetPageUrlAsync(docId, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cached);
@@ -58,7 +59,7 @@ public sealed class GetPageUrlQueryHandlerTests
         var result = await CreateHandler().HandleAsync(query);
 
         result.Should().BeSameAs(cached);
-        _storageMock.Verify(s => s.GetPageCdnUrlsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        
         _repositoryMock.Verify(r => r.GetByIdAndTenantAsync(It.IsAny<DocumentId>(), It.IsAny<TenantId>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -77,18 +78,13 @@ public sealed class GetPageUrlQueryHandlerTests
             It.IsAny<DocumentId>(), It.IsAny<TenantId>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(doc);
 
-        _storageMock.Setup(s => s.GetPageCdnUrlsAsync(
-            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(("https://cdn/full", "https://cdn/thumb", expiry));
-
+        
         _cacheMock.Setup(c => c.SetPageUrlAsync(
             docId, 1, It.IsAny<PageUrlDto>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var result = await CreateHandler().HandleAsync(query);
 
-        result.FullUrl.Should().Be("https://cdn/full");
-        result.ThumbnailUrl.Should().Be("https://cdn/thumb");
         result.PageNumber.Should().Be(1);
 
         _cacheMock.Verify(c => c.SetPageUrlAsync(

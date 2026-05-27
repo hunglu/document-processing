@@ -4,7 +4,7 @@ using DocumentProcessing.Core.CQRS;
 using DocumentProcessing.Core.Queries;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentProcessing.Api.Controllers;
 
@@ -12,11 +12,14 @@ namespace DocumentProcessing.Api.Controllers;
 [EnableRateLimiting("per-tenant")]
 public sealed class DocumentsController : ApiControllerBase
 {
-    private static readonly ILogger Logger = Log.ForContext<DocumentsController>();
+    private readonly ILogger<DocumentsController> _logger;
 
     /// <inheritdoc/>
-    public DocumentsController(ICommandDispatcher commands, IQueryDispatcher queries)
-        : base(commands, queries) { }
+    public DocumentsController(ICommandDispatcher commands, IQueryDispatcher queries, ILogger<DocumentsController> logger)
+        : base(commands, queries)
+    {
+        _logger = logger;
+    }
 
     /// <summary>Initiates an upload intent and returns a SAS URL for direct client upload.</summary>
     /// <param name="request">Upload intent parameters.</param>
@@ -31,7 +34,7 @@ public sealed class DocumentsController : ApiControllerBase
         [FromBody] UploadIntentRequest request,
         CancellationToken cancellationToken)
     {
-        Logger.Information("Upload intent requested for {FileName} by tenant {TenantId}", request.FileName, TenantId);
+        _logger.LogInformation("Upload intent requested for {FileName} by tenant {TenantId}", request.FileName, TenantId);
 
         var command = new CreateUploadIntentCommand
         {
@@ -64,7 +67,7 @@ public sealed class DocumentsController : ApiControllerBase
         [FromBody] CompleteUploadRequest request,
         CancellationToken cancellationToken)
     {
-        Logger.Information("Completing upload for {UploadId}", uploadId);
+        _logger.LogInformation("Completing upload for {UploadId}", uploadId);
 
         var command = new CompleteUploadCommand
         {

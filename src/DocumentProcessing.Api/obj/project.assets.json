@@ -6121,7 +6121,7 @@
   },
   "projectFileDependencyGroups": {
     "net8.0": [
-      "AspNetCore.HealthChecks.AzureServiceBus >= 8.0.2",
+      "AspNetCore.HealthChecks.AzureServiceBus >= 9.0.0",
       "AspNetCore.HealthChecks.Redis >= 8.0.1",
       "DocumentProcessing.Infrastructure >= 1.0.0",
       "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore >= 8.0.6",
@@ -6188,7 +6188,7 @@
         "dependencies": {
           "AspNetCore.HealthChecks.AzureServiceBus": {
             "target": "Package",
-            "version": "[8.0.2, )"
+            "version": "[9.0.0, )"
           },
           "AspNetCore.HealthChecks.Redis": {
             "target": "Package",
@@ -6233,16 +6233,5 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.314/PortableRuntimeIdentifierGraph.json"
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Error",
-      "message": "Warning As Error: DocumentProcessing.Api depends on AspNetCore.HealthChecks.AzureServiceBus (>= 8.0.2) but AspNetCore.HealthChecks.AzureServiceBus 8.0.2 was not found. AspNetCore.HealthChecks.AzureServiceBus 9.0.0 was resolved instead.",
-      "libraryId": "AspNetCore.HealthChecks.AzureServiceBus",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    }
-  ]
+  }
 }

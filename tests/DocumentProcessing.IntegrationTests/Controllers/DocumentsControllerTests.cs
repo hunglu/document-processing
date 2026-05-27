@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using DocumentProcessing.Contracts.DTOs;
 using DocumentProcessing.IntegrationTests.Fixtures;
 using FluentAssertions;
+using Xunit;
 
 namespace DocumentProcessing.IntegrationTests.Controllers;
 

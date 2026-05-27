@@ -5,22 +5,23 @@ using DocumentProcessing.Core.Exceptions;
 using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Core.Queries;
 using DocumentProcessing.Core.ValueObjects;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentProcessing.Infrastructure.CQRS.Handlers;
 
-/// <summary>Handles <see cref="GetDocumentManifestQuery"/>: returns the full page manifest.</summary>
-internal sealed class GetDocumentManifestQueryHandler : IQueryHandler<GetDocumentManifestQuery, DocumentManifestDto>
+/// <summary>Handles <see cref="GetDocumentManifestQuery"/>: returns the full page manifest with extracted text.</summary>
+public class GetDocumentManifestQueryHandler : IQueryHandler<GetDocumentManifestQuery, DocumentManifestDto>
 {
     private readonly IDocumentRepository _repository;
-    private readonly IStorageService _storage;
-    private static readonly ILogger Logger = Log.ForContext<GetDocumentManifestQueryHandler>();
+    private readonly ILogger<GetDocumentManifestQueryHandler> _logger;
     private static readonly ActivitySource ActivitySource = new("DocumentProcessing.Infrastructure");
 
-    public GetDocumentManifestQueryHandler(IDocumentRepository repository, IStorageService storage)
+    public GetDocumentManifestQueryHandler(
+        IDocumentRepository repository,
+        ILogger<GetDocumentManifestQueryHandler> logger)
     {
         _repository = repository;
-        _storage = storage;
+        _logger = logger;
     }
 
     /// <inheritdoc/>
@@ -29,31 +30,23 @@ internal sealed class GetDocumentManifestQueryHandler : IQueryHandler<GetDocumen
         using var activity = ActivitySource.StartActivity("GetDocumentManifest");
         activity?.SetTag("document.id", query.DocumentId.ToString());
 
-        Logger.Debug("Getting manifest for document {DocumentId}", query.DocumentId);
+        _logger.LogDebug("Getting manifest for document {DocumentId}", query.DocumentId);
 
         var document = await _repository.GetByIdAndTenantAsync(
             new DocumentId(query.DocumentId), TenantId.From(query.TenantId), cancellationToken)
             ?? throw new DocumentNotFoundException(new DocumentId(query.DocumentId));
 
-        var pageUrlTasks = document.Pages
+        var pages = document.Pages
             .OrderBy(p => p.PageNumber)
-            .Select(async p =>
+            .Select(p => new PageUrlDto
             {
-                var (fullUrl, thumbUrl, expiresAt) = await _storage.GetPageCdnUrlsAsync(
-                    p.FullBlobPath, p.ThumbnailBlobPath, cancellationToken);
+                PageNumber = p.PageNumber,
+                ExtractedText = p.ExtractedText
+            })
+            .ToArray();
 
-                return new PageUrlDto
-                {
-                    PageNumber = p.PageNumber,
-                    FullUrl = fullUrl,
-                    ThumbnailUrl = thumbUrl,
-                    ExpiresAt = expiresAt
-                };
-            });
-
-        var pages = await Task.WhenAll(pageUrlTasks);
-
-        Logger.Information("Manifest built for document {DocumentId} with {PageCount} pages", query.DocumentId, pages.Length);
+        _logger.LogInformation("Manifest built for document {DocumentId} with {PageCount} pages",
+            query.DocumentId, pages.Length);
 
         return new DocumentManifestDto
         {

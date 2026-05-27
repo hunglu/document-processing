@@ -3,6 +3,7 @@ using DocumentProcessing.Contracts.DTOs;
 using DocumentProcessing.Infrastructure.Caching;
 using DocumentProcessing.Infrastructure.Configuration;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using StackExchange.Redis;
@@ -14,6 +15,7 @@ public sealed class RedisCacheServiceTests
 {
     private readonly Mock<IConnectionMultiplexer> _multiplexerMock = new();
     private readonly Mock<IDatabase> _dbMock = new();
+    private readonly Mock<ILogger<RedisCacheService>> _loggerMock = new();
 
     private readonly IOptions<RedisOptions> _options =
         Options.Create(new RedisOptions { DefaultTtlMinutes = 60, PageUrlTtlMinutes = 55 });
@@ -27,13 +29,13 @@ public sealed class RedisCacheServiceTests
     {
         _multiplexerMock.Setup(m => m.GetDatabase(It.IsAny<int>(), It.IsAny<object?>()))
             .Returns(_dbMock.Object);
-        return new RedisCacheService(_multiplexerMock.Object, _options);
+        return new RedisCacheService(_multiplexerMock.Object, _options, _loggerMock.Object);
     }
 
     [Fact]
     public async Task GetAsync_CacheHit_ReturnsDeserializedValue()
     {
-        var dto = new PageUrlDto { PageNumber = 1, FullUrl = "https://full", ThumbnailUrl = "https://thumb" };
+        var dto = new PageUrlDto { PageNumber = 1, ExtractedText = "Sample extracted text" };
         var json = JsonSerializer.Serialize(dto, JsonOpts);
 
         _dbMock.Setup(d => d.StringGetAsync("key", It.IsAny<CommandFlags>()))
@@ -42,7 +44,6 @@ public sealed class RedisCacheServiceTests
         var result = await CreateService().GetAsync<PageUrlDto>("key");
 
         result.Should().NotBeNull();
-        result!.FullUrl.Should().Be("https://full");
         result.PageNumber.Should().Be(1);
     }
 
@@ -60,7 +61,7 @@ public sealed class RedisCacheServiceTests
     [Fact]
     public async Task SetAsync_SerializesAndCallsStringSet()
     {
-        var dto = new PageUrlDto { PageNumber = 2, FullUrl = "https://f2", ThumbnailUrl = "https://t2" };
+        var dto = new PageUrlDto { PageNumber = 2, ExtractedText = "Sample extracted text" };
         var ttl = TimeSpan.FromMinutes(30);
 
         _dbMock.Setup(d => d.StringSetAsync(
@@ -93,7 +94,7 @@ public sealed class RedisCacheServiceTests
     public async Task SetPageUrlAsync_UsesTtlFromOptions_WhenPageUrlTtlMinutes55()
     {
         var docId = Guid.NewGuid();
-        var dto = new PageUrlDto { PageNumber = 1, FullUrl = "u", ThumbnailUrl = "t" };
+        var dto = new PageUrlDto { PageNumber = 1, ExtractedText = "Sample extracted text" };
         var expectedTtl = TimeSpan.FromMinutes(55);
 
         _dbMock.Setup(d => d.StringSetAsync(

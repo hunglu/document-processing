@@ -42,10 +42,7 @@ public partial class InitialCreate : Migration
                     .Annotation("SqlServer:Identity", "1, 1"),
                 DocumentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                 PageNumber = table.Column<int>(type: "int", nullable: false),
-                FullBlobPath = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: false),
-                ThumbnailBlobPath = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: false),
-                WidthPx = table.Column<int>(type: "int", nullable: false),
-                HeightPx = table.Column<int>(type: "int", nullable: false),
+                ExtractedText = table.Column<string>(type: "nvarchar(max)", nullable: false),
                 CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
             },
             constraints: table =>

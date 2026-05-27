@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "PIPezykG0A4=",
+  "dgSpecHash": "CeX27V0Xnlc=",
   "success": true,
   "projectFilePath": "D:\\MyProgramming\\interview\\Simpson Strong-Tie Vietnam\\DocumentProcessing\\tests\\DocumentProcessing.IntegrationTests\\DocumentProcessing.IntegrationTests.csproj",
   "expectedPackageFiles": [
@@ -173,18 +173,5 @@
     "C:\\Users\\hungl\\.nuget\\packages\\xunit.extensibility.execution\\2.9.0\\xunit.extensibility.execution.2.9.0.nupkg.sha512",
     "C:\\Users\\hungl\\.nuget\\packages\\xunit.runner.visualstudio\\2.8.2\\xunit.runner.visualstudio.2.8.2.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Warning",
-      "message": "DocumentProcessing.Api depends on AspNetCore.HealthChecks.AzureServiceBus (>= 8.0.2) but AspNetCore.HealthChecks.AzureServiceBus 8.0.2 was not found. AspNetCore.HealthChecks.AzureServiceBus 9.0.0 was resolved instead.",
-      "projectPath": "D:\\MyProgramming\\interview\\Simpson Strong-Tie Vietnam\\DocumentProcessing\\tests\\DocumentProcessing.IntegrationTests\\DocumentProcessing.IntegrationTests.csproj",
-      "warningLevel": 1,
-      "filePath": "D:\\MyProgramming\\interview\\Simpson Strong-Tie Vietnam\\DocumentProcessing\\tests\\DocumentProcessing.IntegrationTests\\DocumentProcessing.IntegrationTests.csproj",
-      "libraryId": "AspNetCore.HealthChecks.AzureServiceBus",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    }
-  ]
+  "logs": []
 }

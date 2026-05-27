@@ -3,7 +3,7 @@ using DocumentProcessing.Core.Exceptions;
 using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Core.ValueObjects;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentProcessing.Infrastructure.Persistence.Repositories;
 
@@ -11,21 +11,25 @@ namespace DocumentProcessing.Infrastructure.Persistence.Repositories;
 internal sealed class DocumentRepository : IDocumentRepository
 {
     private readonly ApplicationDbContext _db;
-    private static readonly ILogger Logger = Log.ForContext<DocumentRepository>();
+    private readonly ILogger<DocumentRepository> _logger;
 
-    public DocumentRepository(ApplicationDbContext db) => _db = db;
+    public DocumentRepository(ApplicationDbContext db, ILogger<DocumentRepository> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
 
     /// <inheritdoc/>
     public async Task<Document?> GetByIdAsync(DocumentId id, CancellationToken cancellationToken = default)
     {
-        Logger.Debug("Fetching document {DocumentId}", id);
+        _logger.LogDebug("Fetching document {DocumentId}", id);
         return await CompiledQueries.GetDocumentById(_db, id.Value);
     }
 
     /// <inheritdoc/>
     public async Task<Document?> GetByIdAndTenantAsync(DocumentId id, TenantId tenantId, CancellationToken cancellationToken = default)
     {
-        Logger.Debug("Fetching document {DocumentId} for tenant {TenantId}", id, tenantId);
+        _logger.LogDebug("Fetching document {DocumentId} for tenant {TenantId}", id, tenantId);
         return await CompiledQueries.GetDocumentByIdAndTenant(_db, id.Value, tenantId.Value);
     }
 
@@ -34,7 +38,7 @@ internal sealed class DocumentRepository : IDocumentRepository
     {
         _db.Documents.Add(document);
         await _db.SaveChangesAsync(cancellationToken);
-        Logger.Information("Document {DocumentId} persisted", document.Id);
+        _logger.LogInformation("Document {DocumentId} persisted", document.Id);
     }
 
     /// <inheritdoc/>
@@ -43,7 +47,7 @@ internal sealed class DocumentRepository : IDocumentRepository
         try
         {
             await _db.SaveChangesAsync(cancellationToken);
-            Logger.Information("Document {DocumentId} updated to status {Status}", document.Id, document.Status);
+            _logger.LogInformation("Document {DocumentId} updated to status {Status}", document.Id, document.Status);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -57,6 +61,6 @@ internal sealed class DocumentRepository : IDocumentRepository
         var pageList = pages.ToList();
         _db.DocumentPages.AddRange(pageList);
         await _db.SaveChangesAsync(cancellationToken);
-        Logger.Information("Persisted {PageCount} pages", pageList.Count);
+        _logger.LogInformation("Persisted {PageCount} pages", pageList.Count);
     }
 }

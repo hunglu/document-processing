@@ -351,14 +351,6 @@
             "Polly.Extensions": {
               "target": "Package",
               "version": "[8.6.6, )"
-            },
-            "SixLabors.ImageSharp": {
-              "target": "Package",
-              "version": "[4.0.0, )"
-            },
-            "SixLabors.ImageSharp.Drawing": {
-              "target": "Package",
-              "version": "[2.1.4, )"
             }
           },
           "imports": [

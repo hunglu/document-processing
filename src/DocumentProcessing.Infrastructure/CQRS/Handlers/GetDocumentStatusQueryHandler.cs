@@ -5,18 +5,24 @@ using DocumentProcessing.Core.Exceptions;
 using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Core.Queries;
 using DocumentProcessing.Core.ValueObjects;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentProcessing.Infrastructure.CQRS.Handlers;
 
 /// <summary>Handles <see cref="GetDocumentStatusQuery"/>.</summary>
-internal sealed class GetDocumentStatusQueryHandler : IQueryHandler<GetDocumentStatusQuery, DocumentStatusDto>
+public class GetDocumentStatusQueryHandler : IQueryHandler<GetDocumentStatusQuery, DocumentStatusDto>
 {
     private readonly IDocumentRepository _repository;
-    private static readonly ILogger Logger = Log.ForContext<GetDocumentStatusQueryHandler>();
+    private readonly ILogger<GetDocumentStatusQueryHandler> _logger;
     private static readonly ActivitySource ActivitySource = new("DocumentProcessing.Infrastructure");
 
-    public GetDocumentStatusQueryHandler(IDocumentRepository repository) => _repository = repository;
+    public GetDocumentStatusQueryHandler(
+        IDocumentRepository repository,
+        ILogger<GetDocumentStatusQueryHandler> logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
 
     /// <inheritdoc/>
     public async Task<DocumentStatusDto> HandleAsync(GetDocumentStatusQuery query, CancellationToken cancellationToken = default)
@@ -24,7 +30,7 @@ internal sealed class GetDocumentStatusQueryHandler : IQueryHandler<GetDocumentS
         using var activity = ActivitySource.StartActivity("GetDocumentStatus");
         activity?.SetTag("document.id", query.DocumentId.ToString());
 
-        Logger.Debug("Getting status for document {DocumentId}", query.DocumentId);
+        _logger.LogDebug("Getting status for document {DocumentId}", query.DocumentId);
 
         var document = await _repository.GetByIdAndTenantAsync(
             new DocumentId(query.DocumentId), TenantId.From(query.TenantId), cancellationToken)

@@ -28,7 +28,7 @@ Azure CDN with sub-2-second page render SLA.
 | Cache | Redis (Azure Cache for Redis) via StackExchange.Redis |
 | Workers | .NET Worker Service |
 | PDF Processing | PdfPig |
-| Logging | Serilog → Azure Application Insights sink |
+| Logging | Serilog → Azure Application Insights sink, Serilog → Console sink |
 | Tracing | DataDog APM (OpenTelemetry → DD agent) |
 | Auth | JWT Bearer (ICurrentUserService abstraction) |
 | Testing | xUnit, FluentAssertions, NSubstitute, Testcontainers |
@@ -109,17 +109,19 @@ var result = await _queryDispatcher.QueryAsync<GetDocumentStatusQuery, DocumentS
 
 ## Logging — Serilog
 
-- Sink: Azure Application Insights (TelemetryConfiguration)
+- Sink: Azure Application Insights (TelemetryConfiguration), Console Sink
 - Enrich with: CorrelationId, MachineName, ThreadId, Environment
 - Structured logging only — no string interpolation in log calls
 - Minimum level: Information (prod), Debug (dev)
 - Log request/response via middleware (exclude health endpoints)
+- Call Log Interface of Microsoft Extension Logging.
+- Serilog configuration in appsetting.json of project
 
 ```csharp
 // Always use structured logging
-Log.Information("Document {DocumentId} processing started for tenant {TenantId}", id, tenantId);
+Logger.LogInformation("Document {DocumentId} processing started for tenant {TenantId}", id, tenantId);
 // Never
-Log.Information($"Document {id} processing started"); // ❌
+Logger.LogInformation($"Document {id} processing started"); // ❌
 ```
 
 ## Distributed Tracing — DataDog

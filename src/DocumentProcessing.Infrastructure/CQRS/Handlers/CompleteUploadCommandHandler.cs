@@ -6,8 +6,8 @@ using DocumentProcessing.Core.Exceptions;
 using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Core.ValueObjects;
 using DocumentProcessing.Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Serilog;
 
 namespace DocumentProcessing.Infrastructure.CQRS.Handlers;
 
@@ -20,17 +20,19 @@ public class CompleteUploadCommandHandler : ICommandHandler<CompleteUploadComman
     private readonly IDocumentRepository _repository;
     private readonly IMessagePublisher _publisher;
     private readonly ServiceBusOptions _sbOptions;
-    private static readonly ILogger Logger = Log.ForContext<CompleteUploadCommandHandler>();
+    private readonly ILogger<CompleteUploadCommandHandler> _logger;
     private static readonly ActivitySource ActivitySource = new("DocumentProcessing.Infrastructure");
 
     public CompleteUploadCommandHandler(
         IDocumentRepository repository,
         IMessagePublisher publisher,
-        IOptions<ServiceBusOptions> sbOptions)
+        IOptions<ServiceBusOptions> sbOptions,
+        ILogger<CompleteUploadCommandHandler> logger)
     {
         _repository = repository;
         _publisher = publisher;
         _sbOptions = sbOptions.Value;
+        _logger = logger;
     }
 
     /// <inheritdoc/>
@@ -39,7 +41,7 @@ public class CompleteUploadCommandHandler : ICommandHandler<CompleteUploadComman
         using var activity = ActivitySource.StartActivity("CompleteUpload");
         activity?.SetTag("upload.id", command.UploadId.ToString());
 
-        Logger.Information("Completing upload for {UploadId}", command.UploadId);
+        _logger.LogInformation("Completing upload for {UploadId}", command.UploadId);
 
         var documentId = new DocumentId(command.UploadId);
         var document = await _repository.GetByIdAsync(documentId, cancellationToken)
@@ -69,7 +71,7 @@ public class CompleteUploadCommandHandler : ICommandHandler<CompleteUploadComman
         await _publisher.PublishAsync(
             _sbOptions.ProcessingQueueName, uploadedEvent, command.CorrelationId, cancellationToken);
 
-        Logger.Information("Upload completed and event published for document {DocumentId}", documentId);
+        _logger.LogInformation("Upload completed and event published for document {DocumentId}", documentId);
 
         activity?.SetTag("document.id", documentId.Value.ToString());
 

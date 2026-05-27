@@ -2,8 +2,8 @@ using System.Text.Json;
 using Azure.Messaging.ServiceBus;
 using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Serilog;
 
 namespace DocumentProcessing.Infrastructure.Messaging;
 
@@ -12,7 +12,7 @@ internal sealed class ServiceBusPublisher : IMessagePublisher, IAsyncDisposable
 {
     private readonly ServiceBusClient _client;
     private readonly ServiceBusOptions _options;
-    private static readonly ILogger Logger = Log.ForContext<ServiceBusPublisher>();
+    private readonly ILogger<ServiceBusPublisher> _logger;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -20,10 +20,14 @@ internal sealed class ServiceBusPublisher : IMessagePublisher, IAsyncDisposable
         WriteIndented = false
     };
 
-    public ServiceBusPublisher(ServiceBusClient client, IOptions<ServiceBusOptions> options)
+    public ServiceBusPublisher(
+        ServiceBusClient client,
+        IOptions<ServiceBusOptions> options,
+        ILogger<ServiceBusPublisher> logger)
     {
         _client = client;
         _options = options.Value;
+        _logger = logger;
     }
 
     /// <inheritdoc/>
@@ -45,7 +49,7 @@ internal sealed class ServiceBusPublisher : IMessagePublisher, IAsyncDisposable
 
         await sender.SendMessageAsync(sbMessage, cancellationToken);
 
-        Logger.Information(
+        _logger.LogInformation(
             "Published {MessageType} to {Destination}, CorrelationId {CorrelationId}",
             typeof(T).Name, topicOrQueueName, correlationId);
     }

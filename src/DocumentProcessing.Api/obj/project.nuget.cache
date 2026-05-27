@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "dgSpecHash": "k0CVL3bAup8=",
-  "success": false,
+  "dgSpecHash": "RB/gdLgqyd0=",
+  "success": true,
   "projectFilePath": "D:\\MyProgramming\\interview\\Simpson Strong-Tie Vietnam\\DocumentProcessing\\src\\DocumentProcessing.Api\\DocumentProcessing.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\hungl\\.nuget\\packages\\aspnetcore.healthchecks.azureservicebus\\9.0.0\\aspnetcore.healthchecks.azureservicebus.9.0.0.nupkg.sha512",
@@ -132,17 +132,5 @@
     "C:\\Users\\hungl\\.nuget\\packages\\system.valuetuple\\4.5.0\\system.valuetuple.4.5.0.nupkg.sha512",
     "C:\\Users\\hungl\\.nuget\\packages\\system.windows.extensions\\6.0.0\\system.windows.extensions.6.0.0.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1603",
-      "level": "Error",
-      "message": "Warning As Error: DocumentProcessing.Api depends on AspNetCore.HealthChecks.AzureServiceBus (>= 8.0.2) but AspNetCore.HealthChecks.AzureServiceBus 8.0.2 was not found. AspNetCore.HealthChecks.AzureServiceBus 9.0.0 was resolved instead.",
-      "projectPath": "D:\\MyProgramming\\interview\\Simpson Strong-Tie Vietnam\\DocumentProcessing\\src\\DocumentProcessing.Api\\DocumentProcessing.Api.csproj",
-      "filePath": "D:\\MyProgramming\\interview\\Simpson Strong-Tie Vietnam\\DocumentProcessing\\src\\DocumentProcessing.Api\\DocumentProcessing.Api.csproj",
-      "libraryId": "AspNetCore.HealthChecks.AzureServiceBus",
-      "targetGraphs": [
-        "net8.0"
-      ]
-    }
-  ]
+  "logs": []
 }

@@ -5,19 +5,24 @@ using DocumentProcessing.Core.CQRS;
 using DocumentProcessing.Core.Exceptions;
 using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Core.ValueObjects;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentProcessing.Infrastructure.CQRS.Handlers;
 
 /// <summary>Handles <see cref="UpdateDocumentStatusCommand"/>: applies the status transition on the domain aggregate.</summary>
-internal sealed class UpdateDocumentStatusCommandHandler : ICommandHandler<UpdateDocumentStatusCommand>
+public class UpdateDocumentStatusCommandHandler : ICommandHandler<UpdateDocumentStatusCommand>
 {
     private readonly IDocumentRepository _repository;
-    private static readonly ILogger Logger = Log.ForContext<UpdateDocumentStatusCommandHandler>();
+    private readonly ILogger<UpdateDocumentStatusCommandHandler> _logger;
     private static readonly ActivitySource ActivitySource = new("DocumentProcessing.Infrastructure");
 
-    public UpdateDocumentStatusCommandHandler(IDocumentRepository repository)
-        => _repository = repository;
+    public UpdateDocumentStatusCommandHandler(
+        IDocumentRepository repository,
+        ILogger<UpdateDocumentStatusCommandHandler> logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
 
     /// <inheritdoc/>
     public async Task HandleAsync(UpdateDocumentStatusCommand command, CancellationToken cancellationToken = default)
@@ -26,7 +31,7 @@ internal sealed class UpdateDocumentStatusCommandHandler : ICommandHandler<Updat
         activity?.SetTag("document.id", command.DocumentId.ToString());
         activity?.SetTag("new.status", command.NewStatus.ToString());
 
-        Logger.Information("Updating document {DocumentId} to status {NewStatus}", command.DocumentId, command.NewStatus);
+        _logger.LogInformation("Updating document {DocumentId} to status {NewStatus}", command.DocumentId, command.NewStatus);
 
         var documentId = new DocumentId(command.DocumentId);
         var document = await _repository.GetByIdAsync(documentId, cancellationToken)
@@ -57,6 +62,6 @@ internal sealed class UpdateDocumentStatusCommandHandler : ICommandHandler<Updat
 
         await _repository.UpdateAsync(document, cancellationToken);
 
-        Logger.Information("Document {DocumentId} transitioned to {NewStatus}", command.DocumentId, command.NewStatus);
+        _logger.LogInformation("Document {DocumentId} transitioned to {NewStatus}", command.DocumentId, command.NewStatus);
     }
 }

@@ -5,7 +5,7 @@ using DocumentProcessing.Core.CQRS;
 using DocumentProcessing.Core.Domain;
 using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Core.ValueObjects;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentProcessing.Infrastructure.CQRS.Handlers;
 
@@ -14,13 +14,17 @@ public class CreateUploadIntentCommandHandler : ICommandHandler<CreateUploadInte
 {
     private readonly IDocumentRepository _repository;
     private readonly IStorageService _storage;
-    private static readonly ILogger Logger = Log.ForContext<CreateUploadIntentCommandHandler>();
+    private readonly ILogger<CreateUploadIntentCommandHandler> _logger;
     private static readonly ActivitySource ActivitySource = new("DocumentProcessing.Infrastructure");
 
-    public CreateUploadIntentCommandHandler(IDocumentRepository repository, IStorageService storage)
+    public CreateUploadIntentCommandHandler(
+        IDocumentRepository repository,
+        IStorageService storage,
+        ILogger<CreateUploadIntentCommandHandler> logger)
     {
         _repository = repository;
         _storage = storage;
+        _logger = logger;
     }
 
     /// <inheritdoc/>
@@ -35,7 +39,7 @@ public class CreateUploadIntentCommandHandler : ICommandHandler<CreateUploadInte
         activity?.SetTag("document.id", documentId.Value.ToString());
         activity?.SetTag("tenant.id", tenantId.Value);
 
-        Logger.Information("Creating upload intent for {FileName}, tenant {TenantId}, documentId {DocumentId}",
+        _logger.LogInformation("Creating upload intent for {FileName}, tenant {TenantId}, documentId {DocumentId}",
             command.FileName, command.TenantId, documentId);
 
         var (sasUrl, blobPath, expiresAt) = await _storage.GenerateSasUploadUrlAsync(
@@ -46,7 +50,7 @@ public class CreateUploadIntentCommandHandler : ICommandHandler<CreateUploadInte
 
         await _repository.AddAsync(document, cancellationToken);
 
-        Logger.Information("Upload intent created for document {DocumentId}, SAS expires {ExpiresAt}",
+        _logger.LogInformation("Upload intent created for document {DocumentId}, SAS expires {ExpiresAt}",
             documentId, expiresAt);
 
         return new UploadIntentResponse

@@ -2,8 +2,8 @@ using System.Text.Json;
 using DocumentProcessing.Contracts.DTOs;
 using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Serilog;
 using StackExchange.Redis;
 
 namespace DocumentProcessing.Infrastructure.Caching;
@@ -13,7 +13,7 @@ public class RedisCacheService : ICacheService
 {
     private readonly IDatabase _db;
     private readonly RedisOptions _options;
-    private static readonly ILogger Logger = Log.ForContext<RedisCacheService>();
+    private readonly ILogger<RedisCacheService> _logger;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -21,10 +21,14 @@ public class RedisCacheService : ICacheService
         WriteIndented = false
     };
 
-    public RedisCacheService(IConnectionMultiplexer redis, IOptions<RedisOptions> options)
+    public RedisCacheService(
+        IConnectionMultiplexer redis,
+        IOptions<RedisOptions> options,
+        ILogger<RedisCacheService> logger)
     {
         _db = redis.GetDatabase();
         _options = options.Value;
+        _logger = logger;
     }
 
     /// <inheritdoc/>
@@ -34,11 +38,11 @@ public class RedisCacheService : ICacheService
 
         if (!value.HasValue)
         {
-            Logger.Debug("Cache miss for key {CacheKey}", key);
+            _logger.LogDebug("Cache miss for key {CacheKey}", key);
             return null;
         }
 
-        Logger.Debug("Cache hit for key {CacheKey}", key);
+        _logger.LogDebug("Cache hit for key {CacheKey}", key);
         return JsonSerializer.Deserialize<T>(value.ToString(), SerializerOptions);
     }
 
@@ -47,14 +51,14 @@ public class RedisCacheService : ICacheService
     {
         var json = JsonSerializer.Serialize(value, SerializerOptions);
         await _db.StringSetAsync(key, json, ttl);
-        Logger.Debug("Cache set for key {CacheKey}, TTL {Ttl}", key, ttl);
+        _logger.LogDebug("Cache set for key {CacheKey}, TTL {Ttl}", key, ttl);
     }
 
     /// <inheritdoc/>
     public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
         await _db.KeyDeleteAsync(key);
-        Logger.Debug("Cache key deleted {CacheKey}", key);
+        _logger.LogDebug("Cache key deleted {CacheKey}", key);
     }
 
     /// <inheritdoc/>

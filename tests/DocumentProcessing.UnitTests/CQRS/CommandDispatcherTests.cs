@@ -2,6 +2,7 @@ using DocumentProcessing.Core.CQRS;
 using DocumentProcessing.Infrastructure.CQRS;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -28,9 +29,11 @@ public sealed class CommandDispatcherTests
     private static CommandDispatcher BuildDispatcher(Action<IServiceCollection> register)
     {
         var services = new ServiceCollection();
+        services.AddLogging(); // Ensure logging is registered
         register(services);
         var provider = services.BuildServiceProvider();
-        return new CommandDispatcher(provider);
+        var logger = provider.GetRequiredService<ILogger<CommandDispatcher>>();
+        return new CommandDispatcher(provider, logger);
     }
 
     [Fact]

@@ -7,11 +7,10 @@ using DocumentProcessing.Core.Commands;
 using DocumentProcessing.Core.CQRS;
 using DocumentProcessing.Core.Interfaces;
 using DocumentProcessing.Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
 using Polly.Retry;
-using Serilog;
-using Serilog.Context;
 
 namespace DocumentProcessing.Worker;
 
@@ -25,7 +24,7 @@ public sealed class ServiceBusWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly DocumentProcessingPipeline _pipeline;
     private readonly ServiceBusOptions _sbOptions;
-    private static readonly ILogger Logger = Log.ForContext<ServiceBusWorker>();
+    private readonly ILogger<ServiceBusWorker> _logger;
     private static readonly ActivitySource ActivitySource = new("DocumentProcessing.Worker");
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -39,12 +38,14 @@ public sealed class ServiceBusWorker : BackgroundService
         ServiceBusClient client,
         IServiceScopeFactory scopeFactory,
         DocumentProcessingPipeline pipeline,
-        IOptions<ServiceBusOptions> sbOptions)
+        IOptions<ServiceBusOptions> sbOptions,
+        ILogger<ServiceBusWorker> logger)
     {
         _client = client;
         _scopeFactory = scopeFactory;
         _pipeline = pipeline;
         _sbOptions = sbOptions.Value;
+        _logger = logger;
 
         _retryPolicy = new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions
@@ -52,9 +53,9 @@ public sealed class ServiceBusWorker : BackgroundService
                 MaxRetryAttempts = 3,
                 Delay = TimeSpan.FromSeconds(2),
                 BackoffType = DelayBackoffType.Exponential,
-                OnRetry = static args =>
+                OnRetry = args =>
                 {
-                    Logger.Warning("Retry {Attempt} after {Delay}ms: {Exception}",
+                    _logger.LogWarning("Retry {Attempt} after {Delay}ms: {Exception}",
                         args.AttemptNumber, args.RetryDelay.TotalMilliseconds, args.Outcome.Exception?.Message);
                     return ValueTask.CompletedTask;
                 }
@@ -79,7 +80,7 @@ public sealed class ServiceBusWorker : BackgroundService
 
         await processor.StartProcessingAsync(stoppingToken);
 
-        Logger.Information("ServiceBusWorker listening on queue {Queue}", _sbOptions.ProcessingQueueName);
+        _logger.LogInformation("ServiceBusWorker listening on queue {Queue}", _sbOptions.ProcessingQueueName);
 
         try
         {
@@ -100,8 +101,11 @@ public sealed class ServiceBusWorker : BackgroundService
     {
         var correlationId = args.Message.CorrelationId ?? Guid.NewGuid().ToString("N");
 
-        using (LogContext.PushProperty("CorrelationId", correlationId))
-        using (LogContext.PushProperty("MessageId", args.Message.MessageId))
+        using (_logger.BeginScope(new Dictionary<string, object>
+        {
+            ["CorrelationId"] = correlationId,
+            ["MessageId"] = args.Message.MessageId
+        }))
         {
             using var activity = ActivitySource.StartActivity("ProcessDocumentMessage");
             activity?.SetTag("correlation.id", correlationId);
@@ -113,7 +117,7 @@ public sealed class ServiceBusWorker : BackgroundService
                     args.Message.Body.ToString(), JsonOptions)
                     ?? throw new InvalidOperationException("Failed to deserialize DocumentUploadedEvent.");
 
-                Logger.Information("Processing document {DocumentId} from tenant {TenantId}",
+                _logger.LogInformation("Processing document {DocumentId} from tenant {TenantId}",
                     uploadedEvent.DocumentId, uploadedEvent.TenantId);
 
                 await _retryPolicy.ExecuteAsync(async ct =>
@@ -122,11 +126,11 @@ public sealed class ServiceBusWorker : BackgroundService
 
                 await args.CompleteMessageAsync(args.Message, args.CancellationToken);
 
-                Logger.Information("Message completed for document {DocumentId}", uploadedEvent.DocumentId);
+                _logger.LogInformation("Message completed for document {DocumentId}", uploadedEvent.DocumentId);
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, "Unrecoverable error processing message {MessageId}; dead-lettering", args.Message.MessageId);
+                _logger.LogError(ex, "Unrecoverable error processing message {MessageId}; dead-lettering", args.Message.MessageId);
 
                 await args.DeadLetterMessageAsync(
                     args.Message,
@@ -162,7 +166,7 @@ public sealed class ServiceBusWorker : BackgroundService
             await using var pdfStream = await storageService.DownloadOriginalAsync(
                 uploadedEvent.BlobPath, cancellationToken);
 
-            // 3 & 4. Render pages (PdfPig + parallel WebP upload)
+            // 3. Extract text from all pages in parallel via PdfPig
             var pages = await _pipeline.ProcessAsync(uploadedEvent.DocumentId, pdfStream, cancellationToken);
 
             // 5 & 6. Persist page records
@@ -199,7 +203,7 @@ public sealed class ServiceBusWorker : BackgroundService
                 },
                 correlationId, cancellationToken);
 
-            Logger.Information(
+            _logger.LogInformation(
                 "Document {DocumentId} processed successfully: {PageCount} pages in {ElapsedMs}ms",
                 uploadedEvent.DocumentId, pages.Count, sw.ElapsedMilliseconds);
         }
@@ -215,7 +219,7 @@ public sealed class ServiceBusWorker : BackgroundService
                 _ => ProcessingFailureReason.Unknown
             };
 
-            Logger.Error(ex, "Document {DocumentId} processing failed: {Reason}", uploadedEvent.DocumentId, reason);
+            _logger.LogError(ex, "Document {DocumentId} processing failed: {Reason}", uploadedEvent.DocumentId, reason);
 
             // Update status → Failed
             await commandDispatcher.DispatchAsync(new UpdateDocumentStatusCommand
@@ -245,9 +249,9 @@ public sealed class ServiceBusWorker : BackgroundService
         }
     }
 
-    private static Task ProcessErrorAsync(ProcessErrorEventArgs args)
+    private Task ProcessErrorAsync(ProcessErrorEventArgs args)
     {
-        Logger.Error(args.Exception,
+        _logger.LogError(args.Exception,
             "Service Bus error on {Source}/{Entity}: {ErrorSource}",
             args.FullyQualifiedNamespace, args.EntityPath, args.ErrorSource);
         return Task.CompletedTask;

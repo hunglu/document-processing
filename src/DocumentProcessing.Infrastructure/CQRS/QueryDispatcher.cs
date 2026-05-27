@@ -1,16 +1,20 @@
 using DocumentProcessing.Core.CQRS;
 using Microsoft.Extensions.DependencyInjection;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentProcessing.Infrastructure.CQRS;
 
 /// <summary>Resolves query handlers from the DI container at dispatch time.</summary>
-internal sealed class QueryDispatcher : IQueryDispatcher
+public class QueryDispatcher : IQueryDispatcher
 {
     private readonly IServiceProvider _services;
-    private static readonly ILogger Logger = Log.ForContext<QueryDispatcher>();
+    private readonly ILogger<QueryDispatcher> _logger;
 
-    public QueryDispatcher(IServiceProvider services) => _services = services;
+    public QueryDispatcher(IServiceProvider services, ILogger<QueryDispatcher> logger)
+    {
+        _services = services;
+        _logger = logger;
+    }
 
     /// <inheritdoc/>
     public Task<TResult> DispatchAsync<TResult>(IQuery<TResult> query, CancellationToken cancellationToken = default)
@@ -18,7 +22,7 @@ internal sealed class QueryDispatcher : IQueryDispatcher
         var handlerType = typeof(IQueryHandler<,>).MakeGenericType(query.GetType(), typeof(TResult));
         var handler = _services.GetRequiredService(handlerType);
 
-        Logger.Debug("Dispatching query {QueryType}", query.GetType().Name);
+        _logger.LogDebug("Dispatching query {QueryType}", query.GetType().Name);
 
         var method = handlerType.GetMethod(nameof(IQueryHandler<IQuery<TResult>, TResult>.HandleAsync))!;
         return (Task<TResult>)method.Invoke(handler, [query, cancellationToken])!;

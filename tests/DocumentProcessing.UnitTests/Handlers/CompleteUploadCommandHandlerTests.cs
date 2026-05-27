@@ -7,6 +7,7 @@ using DocumentProcessing.Core.ValueObjects;
 using DocumentProcessing.Infrastructure.CQRS.Handlers;
 using DocumentProcessing.Infrastructure.Configuration;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -17,6 +18,7 @@ public sealed class CompleteUploadCommandHandlerTests
 {
     private readonly Mock<IDocumentRepository> _repositoryMock = new();
     private readonly Mock<IMessagePublisher> _publisherMock = new();
+    private readonly Mock<ILogger<CompleteUploadCommandHandler>> _loggerMock = new();
 
     private readonly IOptions<ServiceBusOptions> _sbOptions =
         Options.Create(new ServiceBusOptions
@@ -28,7 +30,7 @@ public sealed class CompleteUploadCommandHandlerTests
     private static readonly string ValidChecksum = new('a', 64);
 
     private CompleteUploadCommandHandler CreateHandler() =>
-        new(_repositoryMock.Object, _publisherMock.Object, _sbOptions);
+        new(_repositoryMock.Object, _publisherMock.Object, _sbOptions, _loggerMock.Object);
 
     private Document BuildUploadedDocument(Guid id, string checksum)
     {

@@ -1,6 +1,6 @@
 using DocumentProcessing.Api.Extensions;
 using DocumentProcessing.Infrastructure.Extensions;
-using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 // Bootstrap logger before host is built
@@ -14,18 +14,11 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Serilog (full configuration after appsettings are loaded)
+    // Serilog — full sink/enricher config comes from appsettings.json Serilog section
     builder.Host.UseSerilog((context, _, loggerConfig) =>
         loggerConfig
             .ReadFrom.Configuration(context.Configuration)
-            .Enrich.FromLogContext()
-            .Enrich.WithMachineName()
-            .Enrich.WithThreadId()
-            .WriteTo.Console(outputTemplate:
-                "[{Timestamp:HH:mm:ss} {Level:u3}] [{CorrelationId}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.ApplicationInsights(
-                context.Configuration["ApplicationInsights:ConnectionString"],
-                TelemetryConverter.Traces));
+            .Enrich.FromLogContext());
 
     // Infrastructure services (EF, Redis, Blob, ServiceBus, CQRS)
     builder.Services.AddInfrastructure(builder.Configuration);

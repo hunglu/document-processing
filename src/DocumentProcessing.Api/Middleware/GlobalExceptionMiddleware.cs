@@ -1,6 +1,6 @@
 using DocumentProcessing.Core.Exceptions;
 using Microsoft.AspNetCore.Mvc;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentProcessing.Api.Middleware;
 
@@ -10,9 +10,13 @@ namespace DocumentProcessing.Api.Middleware;
 public sealed class GlobalExceptionMiddleware
 {
     private readonly RequestDelegate _next;
-    private static readonly ILogger Logger = Log.ForContext<GlobalExceptionMiddleware>();
+    private readonly ILogger<GlobalExceptionMiddleware> _logger;
 
-    public GlobalExceptionMiddleware(RequestDelegate next) => _next = next;
+    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
 
     /// <summary>Middleware entry point.</summary>
     public async Task InvokeAsync(HttpContext context)
@@ -23,27 +27,27 @@ public sealed class GlobalExceptionMiddleware
         }
         catch (DocumentNotFoundException ex)
         {
-            Logger.Warning("Document not found: {Message}", ex.Message);
+            _logger.LogWarning("Document not found: {Message}", ex.Message);
             await WriteProblemsAsync(context, StatusCodes.Status404NotFound, "Not Found", ex.Message);
         }
         catch (DocumentDomainException ex)
         {
-            Logger.Warning("Domain rule violation: {Message}", ex.Message);
+            _logger.LogWarning("Domain rule violation: {Message}", ex.Message);
             await WriteProblemsAsync(context, StatusCodes.Status422UnprocessableEntity, "Domain Rule Violation", ex.Message);
         }
         catch (DocumentConflictException ex)
         {
-            Logger.Warning("Concurrency conflict: {Message}", ex.Message);
+            _logger.LogWarning("Concurrency conflict: {Message}", ex.Message);
             await WriteProblemsAsync(context, StatusCodes.Status409Conflict, "Conflict", ex.Message);
         }
         catch (ArgumentException ex)
         {
-            Logger.Warning("Bad request: {Message}", ex.Message);
+            _logger.LogWarning("Bad request: {Message}", ex.Message);
             await WriteProblemsAsync(context, StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, "Unhandled exception for {Method} {Path}", context.Request.Method, context.Request.Path);
+            _logger.LogError(ex, "Unhandled exception for {Method} {Path}", context.Request.Method, context.Request.Path);
             await WriteProblemsAsync(context, StatusCodes.Status500InternalServerError,
                 "Internal Server Error", "An unexpected error occurred. Please try again later.");
         }

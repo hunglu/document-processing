@@ -1,6 +1,6 @@
 using DocumentProcessing.Infrastructure.Extensions;
 using DocumentProcessing.Worker;
-using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -13,16 +13,11 @@ try
 
     var builder = Host.CreateApplicationBuilder(args);
 
-    builder.Services.AddSerilog((services, loggerConfig) =>
+    // Serilog — full sink/enricher config comes from appsettings.json Serilog section
+    builder.Services.AddSerilog((_, loggerConfig) =>
         loggerConfig
             .ReadFrom.Configuration(builder.Configuration)
-            .Enrich.FromLogContext()
-            .Enrich.WithMachineName()
-            .WriteTo.Console(outputTemplate:
-                "[{Timestamp:HH:mm:ss} {Level:u3}] [{CorrelationId}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.ApplicationInsights(
-                builder.Configuration["ApplicationInsights:ConnectionString"],
-                TelemetryConverter.Traces));
+            .Enrich.FromLogContext());
 
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddDataDogTracing(builder.Configuration);

@@ -23,18 +23,8 @@ internal sealed class DocumentPageConfiguration : IEntityTypeConfiguration<Docum
         builder.Property(p => p.PageNumber)
             .IsRequired();
 
-        builder.Property(p => p.FullBlobPath)
-            .HasMaxLength(1024)
-            .IsRequired();
-
-        builder.Property(p => p.ThumbnailBlobPath)
-            .HasMaxLength(1024)
-            .IsRequired();
-
-        builder.Property(p => p.WidthPx)
-            .IsRequired();
-
-        builder.Property(p => p.HeightPx)
+        builder.Property(p => p.ExtractedText)
+            .HasColumnType("nvarchar(max)")
             .IsRequired();
 
         builder.Property(p => p.CreatedAt)
